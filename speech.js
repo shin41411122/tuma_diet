@@ -1,31 +1,32 @@
+const fs = require('fs');
+const path = require('path');
 const speech = require('@google-cloud/speech');
 
-// Google認証情報を環境変数（JSON文字列）から読み込む
-const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+// ⬇ここが重要：環境変数からjson文字列を読み取り、一時ファイルに保存
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    const credentialsPath = path.join(__dirname, 'gcp-credentials.json');
+    fs.writeFileSync(credentialsPath, process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+}
 
-const client = new speech.SpeechClient({
-  credentials: {
-    client_email: credentials.client_email,
-    private_key: credentials.private_key
-  }
-});
+const client = new speech.SpeechClient();
 
 module.exports = async (audioBuffer) => {
-  const audioBytes = audioBuffer.toString('base64');
+    const audioBytes = audioBuffer.toString('base64');
 
-  const request = {
-    audio: { content: audioBytes },
-    config: {
-      encoding: 'LINEAR16',
-      sampleRateHertz: 16000,
-      languageCode: 'ja-JP',
-    },
-  };
+    const request = {
+        audio: { content: audioBytes },
+        config: {
+            encoding: 'LINEAR16',
+            sampleRateHertz: 16000,
+            languageCode: 'ja-JP',
+        },
+    };
 
-  const [response] = await client.recognize(request);
-  const transcription = response.results
-    .map(result => result.alternatives[0].transcript)
-    .join('\n');
+    const [response] = await client.recognize(request);
+    const transcription = response.results
+        .map(result => result.alternatives[0].transcript)
+        .join('\n');
 
-  return transcription;
+    return transcription;
 };
